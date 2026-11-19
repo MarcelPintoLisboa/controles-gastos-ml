@@ -45,6 +45,14 @@ jobs:
           WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
           SCHEME="${WORKSPACE%.xcworkspace}"
           echo "Workspace: $WORKSPACE / Scheme: $SCHEME"
+          LOG="$RUNNER_TEMP/xcodebuild.log"
+          : > "$LOG"
+          # progresso a cada minuto (o xcodebuild leva ~12 min e não mostra nada na tela)
+          INICIO=$(date +%s)
+          ( while sleep 60; do
+              echo "[$(( ($(date +%s) - INICIO) / 60 )) min] compilando... $(grep -cE '^(CompileC|SwiftCompile|CompileSwift) ' "$LOG") arquivos compilados"
+            done ) &
+          PROGRESSO=$!
           set +e
           xcodebuild \
             -workspace "$WORKSPACE" \
@@ -57,13 +65,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            > "$RUNNER_TEMP/xcodebuild.log" 2>&1
+            > "$LOG" 2>&1
           STATUS=$?
+          kill "$PROGRESSO" 2>/dev/null || true
           set -e
+          echo "Compilação terminou em $(( ($(date +%s) - INICIO) / 60 )) min (código $STATUS)"
           echo "---- erros encontrados (se houver) ----"
-          grep -E "error:" "$RUNNER_TEMP/xcodebuild.log" | head -n 50 || true
+          grep -E "error:" "$LOG" | head -n 50 || true
           echo "---- final do log ----"
-          tail -n 30 "$RUNNER_TEMP/xcodebuild.log"
+          tail -n 30 "$LOG"
           [ "$STATUS" -eq 0 ] || exit "$STATUS"
           test -d "$RUNNER_TEMP/app.xcarchive/Products/Applications"
 
