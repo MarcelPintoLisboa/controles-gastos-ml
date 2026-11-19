@@ -7,7 +7,8 @@
     "start": "expo start",
     "ios": "expo run:ios",
     "android": "expo run:android",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "baixar": "node scripts/baixar-instaladores.js"
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
