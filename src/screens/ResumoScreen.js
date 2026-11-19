@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
-import { ScrollView, View, Text } from 'react-native';
+import { ScrollView, View, Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useStore } from '../store';
 import { Card, Title, Stat, YearPicker } from '../components/ui';
 import { MonthlyBars, Legend, Donut, HBars } from '../components/Charts';
-import { colors, brl, sum, resumoPorMes, porCategoria, MESES } from '../utils';
+import { colors, sum, resumoPorMes, porCategoria, MESES } from '../utils';
 
 export default function ResumoScreen({ navigation }) {
-  const { doAno, ano, setAno, anos, loaded } = useStore();
+  const { doAno, ano, setAno, anos, loaded, brl, ocultar, toggleOcultar } = useStore();
   const meses = useMemo(() => resumoPorMes(doAno), [doAno]);
   const total = sum(doAno);
   const pago = sum(doAno.filter((i) => i.status === 'Pago'));
@@ -19,9 +20,19 @@ export default function ResumoScreen({ navigation }) {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }} edges={['top']}>
       <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-        <Text style={{ fontSize: 24, fontWeight: '800', color: colors.text, margin: 16, marginBottom: 10 }}>
-          Controles de gastos ML
-        </Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', margin: 16, marginBottom: 10 }}>
+          <Text style={{ flex: 1, fontSize: 24, fontWeight: '800', color: colors.text }}>
+            Controles de gastos ML
+          </Text>
+          <Pressable
+            onPress={toggleOcultar}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={ocultar ? 'Mostrar valores' : 'Ocultar valores'}
+          >
+            <Ionicons name={ocultar ? 'eye-off-outline' : 'eye-outline'} size={26} color={colors.primary} />
+          </Pressable>
+        </View>
         <YearPicker anos={anos} ano={ano} onChange={setAno} />
         <View style={{ height: 12 }} />
 

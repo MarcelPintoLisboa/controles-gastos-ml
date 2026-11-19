@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, brl, fmtData, MESES_CURTO } from '../utils';
+import { colors, fmtData, MESES_CURTO } from '../utils';
+import { useStore } from '../store';
 
 // Toque no círculo = marcar pago/a pagar. Toque no resto = editar.
 export default function ItemRow({ item, onToggle, onEdit, showMes }) {
+  const { brl } = useStore();
   const pago = item.status === 'Pago';
   return (
     <Pressable

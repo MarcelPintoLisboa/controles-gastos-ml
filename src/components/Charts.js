@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import Svg, { Rect, Circle, Text as SvgText } from 'react-native-svg';
-import { colors, MESES_CURTO, brl } from '../utils';
+import { colors, MESES_CURTO } from '../utils';
+import { useStore } from '../store';
 
 // Barras empilhadas por mês: pago (verde) + a pagar (laranja). Toque na barra para selecionar o mês.
 export function MonthlyBars({ data, selected, onSelect, height = 190 }) {
@@ -92,6 +93,7 @@ export function Donut({ pago, total, size = 120 }) {
 
 // Barras horizontais por categoria
 export function HBars({ data, color = colors.primary, limit = 8 }) {
+  const { brl } = useStore();
   const list = data.slice(0, limit);
   const max = Math.max(1, ...list.map((d) => d.valor));
   return (

@@ -7,10 +7,10 @@ import { Donut } from '../components/Charts';
 import ItemRow from '../components/ItemRow';
 import ItemForm from '../components/ItemForm';
 import { useEditor } from '../useEditor';
-import { colors, brl, sum, MESES, MESES_CURTO } from '../utils';
+import { colors, sum, MESES, MESES_CURTO } from '../utils';
 
 export default function FaltamScreen({ route }) {
-  const { doAno, ano, toggle } = useStore();
+  const { doAno, ano, toggle, brl } = useStore();
   const hoje = new Date();
   const mesInicial = hoje.getFullYear() === ano ? hoje.getMonth() + 1 : 1;
   const [mes, setMes] = useState(mesInicial);

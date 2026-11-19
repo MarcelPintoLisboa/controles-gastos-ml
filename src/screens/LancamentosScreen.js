@@ -7,10 +7,10 @@ import { Chip, ChipRow } from '../components/ui';
 import ItemRow from '../components/ItemRow';
 import ItemForm from '../components/ItemForm';
 import { useEditor } from '../useEditor';
-import { colors, brl, sum, MESES_CURTO } from '../utils';
+import { colors, sum, MESES_CURTO } from '../utils';
 
 export default function LancamentosScreen() {
-  const { doAno, ano, toggle } = useStore();
+  const { doAno, ano, toggle, brl } = useStore();
   const [mes, setMes] = useState(0); // 0 = todos
   const [status, setStatus] = useState('Todos');
   const [busca, setBusca] = useState('');

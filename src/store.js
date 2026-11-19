@@ -1,9 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import seed from './data/seed.json';
-import { todayISO } from './utils';
+import { todayISO, brl as brlBase } from './utils';
 
 const KEY = '@controles-gastos-ml:v1';
+const KEY_OCULTAR = '@controles-gastos-ml:ocultar';
+const MASCARA = 'R$ •••••';
 const Ctx = createContext(null);
 
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -12,6 +14,20 @@ export function StoreProvider({ children }) {
   const [items, setItems] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [ano, setAno] = useState(2027);
+  const [ocultar, setOcultar] = useState(false);
+
+  // preferência "ocultar valores" (ícone de olho na tela Resumo), salva no aparelho
+  useEffect(() => {
+    AsyncStorage.getItem(KEY_OCULTAR).then((v) => setOcultar(v === '1')).catch(() => {});
+  }, []);
+  const toggleOcultar = useCallback(() => {
+    setOcultar((o) => {
+      AsyncStorage.setItem(KEY_OCULTAR, o ? '0' : '1').catch(() => {});
+      return !o;
+    });
+  }, []);
+  // formata em R$ respeitando o "ocultar valores"
+  const brl = useCallback((n) => (ocultar ? MASCARA : brlBase(n)), [ocultar]);
 
   // carrega dados salvos (ou os dados iniciais da planilha Plan2027)
   useEffect(() => {
@@ -72,7 +88,10 @@ export function StoreProvider({ children }) {
 
   const doAno = useMemo(() => items.filter((i) => i.ano === ano), [items, ano]);
 
-  const value = { items, doAno, loaded, ano, setAno, anos, add, update, remove, toggle, resetSeed, copiarAno };
+  const value = {
+    items, doAno, loaded, ano, setAno, anos, add, update, remove, toggle, resetSeed, copiarAno,
+    ocultar, toggleOcultar, brl,
+  };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

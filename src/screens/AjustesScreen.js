@@ -3,10 +3,10 @@ import { ScrollView, Text, Alert, Share, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { Card, Title, Button, YearPicker } from '../components/ui';
-import { colors, MESES, brl } from '../utils';
+import { colors, MESES } from '../utils';
 
 export default function AjustesScreen() {
-  const { items, doAno, ano, setAno, anos, copiarAno, resetSeed } = useStore();
+  const { items, doAno, ano, setAno, anos, copiarAno, resetSeed, brl } = useStore();
   const [novoAno, setNovoAno] = useState(ano + 1);
 
   const criarAno = () =>
