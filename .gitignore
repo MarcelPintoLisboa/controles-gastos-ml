@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+*.log
+.DS_Store
+
+# pastas nativas geradas pelo expo prebuild
+/ios
+/android
+*.ipa
+*.apk

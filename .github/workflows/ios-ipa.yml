@@ -1,0 +1,57 @@
+name: Gerar IPA iOS (sem assinatura)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-ipa:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar projeto nativo iOS
+        run: npx expo prebuild --platform ios --clean
+
+      - name: Compilar (Release, sem assinatura)
+        run: |
+          cd ios
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME="${WORKSPACE%.xcworkspace}"
+          echo "Workspace: $WORKSPACE / Scheme: $SCHEME"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/app.xcarchive" \
+            archive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" | tail -n 100
+          test -d "$RUNNER_TEMP/app.xcarchive/Products/Applications"
+
+      - name: Empacotar IPA
+        run: |
+          mkdir -p "$RUNNER_TEMP/out/Payload"
+          cp -R "$RUNNER_TEMP/app.xcarchive/Products/Applications/"*.app "$RUNNER_TEMP/out/Payload/"
+          cd "$RUNNER_TEMP/out"
+          zip -qr controles-gastos-ml.ipa Payload
+          ls -lh controles-gastos-ml.ipa
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: controles-gastos-ml-ipa
+          path: ${{ runner.temp }}/out/controles-gastos-ml.ipa
+          retention-days: 30

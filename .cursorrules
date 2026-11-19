@@ -1,0 +1,4 @@
+Projeto: app Expo (React Native, JavaScript) "Controles de gastos ML". Interface e textos em português do Brasil.
+- Estado global em src/store.js; valores em reais (number), mês 1-12, status "A pagar" | "Pago".
+- Use utils.brl() para moeda (não use Intl). Gráficos com react-native-svg em src/components/Charts.js.
+- Mantenha compatibilidade iOS e Android; evite APIs só web ou só nativas sem Expo.
