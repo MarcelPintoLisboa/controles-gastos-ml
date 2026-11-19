@@ -30,11 +30,14 @@ export function Gradient({ from = colors.primary, to = colors.primary2, radius =
   );
 }
 
-// Cartão de destaque com degradê
+// Cartão de destaque com degradê.
+// A sombra fica numa View externa: no iOS, overflow 'hidden' na mesma View apaga a sombra.
 export const HeroCard = ({ children, style }) => (
   <View style={[s.hero, style]}>
-    <Gradient radius={24} />
-    {children}
+    <View style={s.heroInner}>
+      <Gradient radius={24} />
+      {children}
+    </View>
   </View>
 );
 
@@ -105,10 +108,11 @@ export const s = StyleSheet.create({
     shadowColor: '#312E81', shadowOpacity: 0.08, shadowRadius: 16, shadowOffset: { width: 0, height: 6 }, elevation: 3,
   },
   hero: {
-    borderRadius: 24, padding: 20, marginHorizontal: 16, marginBottom: 14, overflow: 'hidden',
+    borderRadius: 24, marginHorizontal: 16, marginBottom: 14,
     shadowColor: colors.primary, shadowOpacity: 0.35, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 8,
     backgroundColor: colors.primary,
   },
+  heroInner: { borderRadius: 24, padding: 20, overflow: 'hidden' },
   title: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 12 },
   chip: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#fff',

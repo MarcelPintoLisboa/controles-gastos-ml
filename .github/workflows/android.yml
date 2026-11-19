@@ -67,15 +67,46 @@ jobs:
           done
           test -f "$ANDROID_HOME/ndk/$V/source.properties"
 
-      # O template do Expo assina o release com a chave de debug que vem no projeto,
-      # o que gera um APK instalável direto no celular (fora da Play Store).
+      # Assinatura: usa a chave própria do app guardada nos segredos do repositório.
+      # Sem os segredos, cai na chave pública de debug do template (o Play Protect
+      # costuma travar a instalação desses APKs), e o log avisa.
+      # Arquiteturas: só as de celular (arm64 e armv7); x86 serve só para emulador.
       - name: Compilar APK (Release)
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+          ASSINATURA=()
+          if [ -n "$KEYSTORE_B64" ] && [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            ASSINATURA=(
+              -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.keystore"
+              -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD"
+              -Pandroid.injected.signing.key.alias="$KEY_ALIAS"
+              -Pandroid.injected.signing.key.password="$KEYSTORE_PASSWORD"
+            )
+            echo "Assinando com a chave própria do app."
+          else
+            echo "::warning::Segredos ANDROID_KEYSTORE_* não configurados: APK assinado com a chave de debug (o Play Protect pode travar a instalação)."
+          fi
+          ./gradlew assembleRelease --no-daemon \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
+            "${ASSINATURA[@]}" \
+            -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+          rm -f "$RUNNER_TEMP/release.keystore"
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/controles-gastos-ml.apk"
           ls -lh "$RUNNER_TEMP/controles-gastos-ml.apk"
+
+      - name: Conferir APK (assinatura e arquiteturas)
+        run: |
+          APK="$RUNNER_TEMP/controles-gastos-ml.apk"
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
+          "$BT/apksigner" verify --print-certs "$APK" | grep -E "certificate DN|SHA-256"
+          echo "Arquiteturas: $(unzip -l "$APK" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | tr '\n' ' ')"
+          "$BT/aapt" dump badging "$APK" | grep -E "^package|sdkVersion|targetSdkVersion"
 
       - uses: actions/upload-artifact@v4
         with:
