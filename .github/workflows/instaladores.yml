@@ -101,3 +101,32 @@ jobs:
           name: controles-gastos-ml-apk
           path: ${{ runner.temp }}/controles-gastos-ml.apk
           retention-days: 30
+
+  # Publica os instaladores numa Release (download direto do .apk/.ipa, sem .zip)
+  release:
+    name: Publicar Release
+    needs: [build-ipa, build-apk]
+    if: ${{ !cancelled() && (needs.build-apk.result == 'success' || needs.build-ipa.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - run: ls -lh dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          prerelease: true
+          body: |
+            Instaladores gerados a partir do commit ${{ github.sha }}.
+            - **Android:** baixe `controles-gastos-ml.apk` no celular e abra para instalar.
+            - **iPhone:** baixe `controles-gastos-ml.ipa` no computador e instale pelo Sideloadly.
+          files: dist/*
+          fail_on_unmatched_files: false
