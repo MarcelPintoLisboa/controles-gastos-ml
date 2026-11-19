@@ -29,6 +29,12 @@ export default function App() {
             screenOptions={({ route }) => ({
               headerShown: false,
               tabBarActiveTintColor: colors.primary,
+              tabBarInactiveTintColor: colors.muted,
+              tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+              tabBarStyle: {
+                borderTopWidth: 0, backgroundColor: '#fff',
+                shadowColor: '#312E81', shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: -4 }, elevation: 12,
+              },
               tabBarIcon: ({ color, size }) => <Ionicons name={icons[route.name]} size={size} color={color} />,
             })}
           >

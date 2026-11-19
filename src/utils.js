@@ -5,16 +5,29 @@ export const MESES = [
 export const MESES_CURTO = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export const colors = {
-  primary: '#1E5FA8',
-  orange: '#F28C28',
-  green: '#2E9E6B',
-  bg: '#F4F6FA',
+  primary: '#4F46E5',
+  primary2: '#7C3AED', // fim do degradê
+  orange: '#F59E0B',
+  green: '#10B981',
+  bg: '#F3F5FB',
   card: '#FFFFFF',
-  text: '#1B2430',
-  muted: '#6B7686',
-  border: '#E3E8F0',
-  danger: '#D64545',
+  text: '#0F172A',
+  muted: '#64748B',
+  border: '#E2E8F0',
+  danger: '#EF4444',
+  soft: '#EEF0FF', // fundo suave de destaque
 };
+
+// Paleta para séries/categorias
+export const palette = ['#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6', '#F97316'];
+
+// Clareia (amt > 0) ou escurece (amt < 0) uma cor hex. amt entre -1 e 1.
+export function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (v) => Math.max(0, Math.min(255, Math.round(amt < 0 ? v * (1 + amt) : v + (255 - v) * amt)));
+  const r = ch(n >> 16), g = ch((n >> 8) & 255), b = ch(n & 255);
+  return `#${((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1)}`;
+}
 
 // Formata em R$ no padrão brasileiro sem depender de Intl (Hermes/Android)
 export function brl(n) {

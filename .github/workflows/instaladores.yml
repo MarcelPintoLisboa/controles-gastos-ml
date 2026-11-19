@@ -1,12 +1,17 @@
-name: Gerar IPA iOS (sem assinatura)
+name: Gerar instaladores (IPA iOS e APK Android)
 
 on:
   workflow_dispatch:
   push:
     branches: [main]
 
+concurrency:
+  group: instaladores-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-ipa:
+    name: IPA iOS (sem assinatura)
     runs-on: macos-15
     timeout-minutes: 60
     steps:
@@ -54,4 +59,45 @@ jobs:
         with:
           name: controles-gastos-ml-ipa
           path: ${{ runner.temp }}/out/controles-gastos-ml.ipa
+          retention-days: 30
+
+  build-apk:
+    name: APK Android
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar projeto nativo Android
+        run: npx expo prebuild --platform android --clean
+
+      # O template do Expo assina o release com a chave de debug que vem no projeto,
+      # o que gera um APK instalável direto no celular (fora da Play Store).
+      - name: Compilar APK (Release)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+          cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/controles-gastos-ml.apk"
+          ls -lh "$RUNNER_TEMP/controles-gastos-ml.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: controles-gastos-ml-apk
+          path: ${{ runner.temp }}/controles-gastos-ml.apk
           retention-days: 30

@@ -1,9 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import seed from './data/seed.json';
 import { todayISO, brl as brlBase } from './utils';
 
-const KEY = '@controles-gastos-ml:v1';
+// v2: começa sem dados (os dados agora vêm da importação de planilha).
+// A chave v1 guardava os dados antigos de exemplo e é apagada ao abrir.
+const KEY = '@controles-gastos-ml:v2';
+const KEY_ANTIGA = '@controles-gastos-ml:v1';
 const KEY_OCULTAR = '@controles-gastos-ml:ocultar';
 const MASCARA = 'R$ •••••';
 const Ctx = createContext(null);
@@ -29,14 +31,15 @@ export function StoreProvider({ children }) {
   // formata em R$ respeitando o "ocultar valores"
   const brl = useCallback((n) => (ocultar ? MASCARA : brlBase(n)), [ocultar]);
 
-  // carrega dados salvos (ou os dados iniciais da planilha Plan2027)
+  // carrega dados salvos (começa vazio)
   useEffect(() => {
     (async () => {
       try {
+        AsyncStorage.removeItem(KEY_ANTIGA).catch(() => {});
         const raw = await AsyncStorage.getItem(KEY);
-        setItems(raw ? JSON.parse(raw) : seed);
+        setItems(raw ? JSON.parse(raw) : []);
       } catch (e) {
-        setItems(seed);
+        setItems([]);
       }
       setLoaded(true);
     })();
@@ -65,9 +68,15 @@ export function StoreProvider({ children }) {
       ),
     []
   );
-  const resetSeed = useCallback(() => {
-    setItems(seed);
-    setAno(2027);
+  // Apaga todos os lançamentos de um ano
+  const zerarAno = useCallback((a) => setItems((p) => p.filter((i) => i.ano !== a)), []);
+
+  // Importa lançamentos de planilha: modo "substituir" apaga o ano antes; "adicionar" soma aos existentes
+  const importar = useCallback((a, lista, modo) => {
+    setItems((p) => [
+      ...(modo === 'substituir' ? p.filter((i) => i.ano !== a) : p),
+      ...lista.map((i) => ({ ...i, ano: a, id: newId() })),
+    ]);
   }, []);
 
   // Copia o planejamento de um ano para outro (tudo volta como "A pagar")
@@ -89,7 +98,7 @@ export function StoreProvider({ children }) {
   const doAno = useMemo(() => items.filter((i) => i.ano === ano), [items, ano]);
 
   const value = {
-    items, doAno, loaded, ano, setAno, anos, add, update, remove, toggle, resetSeed, copiarAno,
+    items, doAno, loaded, ano, setAno, anos, add, update, remove, toggle, zerarAno, importar, copiarAno,
     ocultar, toggleOcultar, brl,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

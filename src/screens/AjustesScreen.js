@@ -2,12 +2,70 @@ import React, { useState } from 'react';
 import { ScrollView, Text, Alert, Share, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { Card, Title, Button, YearPicker } from '../components/ui';
+import { Card, Title, Button, YearPicker, Chip, ChipRow } from '../components/ui';
 import { colors, MESES } from '../utils';
+import { escolherPlanilha, lerAba } from '../importPlanilha';
 
 export default function AjustesScreen() {
-  const { items, doAno, ano, setAno, anos, copiarAno, resetSeed, brl } = useStore();
+  const { items, doAno, ano, setAno, anos, copiarAno, zerarAno, importar, brl } = useStore();
   const [novoAno, setNovoAno] = useState(ano + 1);
+
+  // importação: arquivo escolhido, aba selecionada e prévia da leitura
+  const [planilha, setPlanilha] = useState(null);
+  const [aba, setAba] = useState(null);
+  const [previa, setPrevia] = useState(null);
+  const [erroImport, setErroImport] = useState('');
+  const [carregando, setCarregando] = useState(false);
+
+  const limparImport = () => { setPlanilha(null); setAba(null); setPrevia(null); setErroImport(''); };
+
+  const selecionarAba = (wb, nome) => {
+    setAba(nome);
+    try {
+      setPrevia(lerAba(wb, nome, ano));
+      setErroImport('');
+    } catch (e) {
+      setPrevia(null);
+      setErroImport(e.message);
+    }
+  };
+
+  const escolherArquivo = async () => {
+    setCarregando(true);
+    try {
+      const p = await escolherPlanilha();
+      if (!p) return;
+      setPlanilha(p);
+      setPrevia(null);
+      setErroImport('');
+      setAba(null);
+      if (p.abas.length === 1) selecionarAba(p.wb, p.abas[0]);
+    } catch (e) {
+      limparImport();
+      setErroImport('Não foi possível ler o arquivo. Use uma planilha .xlsx, .xls ou .csv.');
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  const confirmarImport = (modo) => {
+    const msg =
+      modo === 'substituir'
+        ? `Os ${doAno.length} lançamentos atuais de ${ano} serão apagados e substituídos por ${previa.itens.length} da aba "${aba}".`
+        : `${previa.itens.length} lançamentos da aba "${aba}" serão adicionados a ${ano}.`;
+    Alert.alert('Importar planilha', msg, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Importar',
+        style: modo === 'substituir' ? 'destructive' : 'default',
+        onPress: () => {
+          importar(ano, previa.itens, modo);
+          limparImport();
+          Alert.alert('Pronto', `${previa.itens.length} lançamentos importados em ${ano}.`);
+        },
+      },
+    ]);
+  };
 
   const criarAno = () =>
     Alert.alert(
@@ -19,10 +77,10 @@ export default function AjustesScreen() {
       ]
     );
 
-  const restaurar = () =>
-    Alert.alert('Restaurar dados', 'Apaga todas as alterações e volta aos dados da planilha Plan2027.', [
+  const zerar = () =>
+    Alert.alert(`Zerar ${ano}`, `Apaga todos os ${doAno.length} lançamentos de ${ano}. Não dá para desfazer.`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Restaurar', style: 'destructive', onPress: resetSeed },
+      { text: 'Zerar', style: 'destructive', onPress: () => zerarAno(ano) },
     ]);
 
   const exportar = () => {
@@ -44,6 +102,60 @@ export default function AjustesScreen() {
         </Card>
 
         <Card>
+          <Title>Importar planilha</Title>
+          <Text style={{ color: colors.muted, marginBottom: 10 }}>
+            A aba precisa ter as colunas <Text style={{ fontWeight: '700' }}>Obrigações</Text>,{' '}
+            <Text style={{ fontWeight: '700' }}>Valor</Text>, <Text style={{ fontWeight: '700' }}>Mês</Text> e{' '}
+            <Text style={{ fontWeight: '700' }}>Status</Text> (Pago ou A pagar). Os dados entram em {ano}.
+          </Text>
+          <Button
+            label={carregando ? 'Lendo arquivo…' : planilha ? 'Escolher outro arquivo' : 'Escolher planilha'}
+            outline={!!planilha}
+            onPress={carregando ? undefined : escolherArquivo}
+          />
+
+          {planilha && (
+            <View style={{ marginTop: 12 }}>
+              <Text style={{ color: colors.text, marginBottom: 8 }}>
+                Arquivo: <Text style={{ fontWeight: '700' }}>{planilha.nomeArquivo}</Text>
+              </Text>
+              <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 6 }}>Escolha a aba:</Text>
+              <View style={{ marginHorizontal: -16 }}>
+                <ChipRow>
+                  {planilha.abas.map((n) => (
+                    <Chip key={n} label={n} active={n === aba} onPress={() => selecionarAba(planilha.wb, n)} />
+                  ))}
+                </ChipRow>
+              </View>
+            </View>
+          )}
+
+          {!!erroImport && <Text style={{ color: colors.danger, marginTop: 10 }}>{erroImport}</Text>}
+
+          {previa && (
+            <View style={{ marginTop: 12, gap: 10 }}>
+              <Text style={{ color: colors.text }}>
+                {previa.itens.length} obrigações encontradas
+                {previa.itens.length > 0 && ` · total ${brl(previa.itens.reduce((a, i) => a + i.valor, 0))}`}
+              </Text>
+              {previa.erros.length > 0 && (
+                <Text style={{ color: colors.orange, fontSize: 12 }}>
+                  {previa.erros.length} linha(s) ignorada(s) por falta de nome, valor ou mês válido: {previa.erros.slice(0, 10).join(', ')}
+                  {previa.erros.length > 10 ? '…' : ''}
+                </Text>
+              )}
+              {previa.itens.length > 0 && (
+                <>
+                  <Button label={`Substituir dados de ${ano}`} onPress={() => confirmarImport('substituir')} />
+                  <Button label={`Adicionar aos dados de ${ano}`} outline onPress={() => confirmarImport('adicionar')} />
+                </>
+              )}
+              <Button label="Cancelar" outline color={colors.muted} onPress={limparImport} />
+            </View>
+          )}
+        </Card>
+
+        <Card>
           <Title>Novo planejamento anual</Title>
           <Text style={{ color: colors.muted, marginBottom: 10 }}>
             Cria {novoAno} copiando os valores de {ano}. Depois é só ajustar o que mudar.
@@ -62,7 +174,7 @@ export default function AjustesScreen() {
           <Title>Dados</Title>
           <View style={{ gap: 10 }}>
             <Button label="Exportar (compartilhar CSV)" outline onPress={exportar} />
-            <Button label="Restaurar dados da planilha Plan2027" color={colors.danger} outline onPress={restaurar} />
+            <Button label={`Zerar dados de ${ano}`} color={colors.danger} outline onPress={zerar} />
           </View>
           <Text style={{ color: colors.muted, marginTop: 10, fontSize: 12 }}>
             Total salvo no aparelho: {items.length} lançamentos ({brl(items.reduce((a, i) => a + i.valor, 0))}).
