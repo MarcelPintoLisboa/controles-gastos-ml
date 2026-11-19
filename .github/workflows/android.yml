@@ -1,33 +1,22 @@
-name: Gerar instaladores (IPA iOS e APK Android)
+name: Android - gerar APK
 
 on:
-  workflow_dispatch:
   push:
     branches: [main]
+    paths-ignore: ['**.md', 'scripts/**', '.cursorrules', '.github/workflows/ios.yml']
+  workflow_dispatch:
 
 concurrency:
-  group: instaladores-${{ github.ref }}
+  group: android-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # IPA: tenta primeiro no Mac ARM; se o GitHub não tiver máquina livre (ou falhar),
-  # tenta de novo automaticamente num Mac Intel.
-  build-ipa:
-    uses: ./.github/workflows/ipa.yml
-    with:
-      runner: macos-15
-
-  build-ipa-retry:
-    needs: build-ipa
-    if: ${{ !cancelled() && needs.build-ipa.result != 'success' }}
-    uses: ./.github/workflows/ipa.yml
-    with:
-      runner: macos-15-intel
-
-  build-apk:
+  apk:
     name: APK Android
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 45
+    permissions:
+      contents: write # para publicar a Release
     steps:
       - uses: actions/checkout@v4
 
@@ -94,31 +83,15 @@ jobs:
           path: ${{ runner.temp }}/controles-gastos-ml.apk
           retention-days: 30
 
-  # Publica os instaladores numa Release (download direto do .apk/.ipa, sem .zip)
-  release:
-    name: Publicar Release
-    needs: [build-ipa, build-ipa-retry, build-apk]
-    if: ${{ !cancelled() && (needs.build-apk.result == 'success' || needs.build-ipa.result == 'success' || needs.build-ipa-retry.result == 'success') }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v4
+      - name: Publicar Release
+        uses: softprops/action-gh-release@v2
         with:
-          path: dist
-          merge-multiple: true
-
-      - run: ls -lh dist
-
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
+          tag_name: android-${{ github.run_number }}
+          name: Android ${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           prerelease: true
           body: |
-            Instaladores gerados a partir do commit ${{ github.sha }}.
-            - **Android:** baixe `controles-gastos-ml.apk` no celular e abra para instalar.
-            - **iPhone:** baixe `controles-gastos-ml.ipa` no computador e instale pelo Sideloadly.
-          files: dist/*
-          fail_on_unmatched_files: false
+            APK gerado a partir do commit ${{ github.sha }}.
+            Baixe `controles-gastos-ml.apk` no celular e abra para instalar
+            (ou rode `npm run baixar` no projeto).
+          files: ${{ runner.temp }}/controles-gastos-ml.apk
