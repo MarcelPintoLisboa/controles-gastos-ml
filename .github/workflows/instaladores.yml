@@ -19,7 +19,7 @@ jobs:
 
   build-ipa-retry:
     needs: build-ipa
-    if: ${{ always() && needs.build-ipa.result != 'success' }}
+    if: ${{ !cancelled() && needs.build-ipa.result != 'success' }}
     uses: ./.github/workflows/ipa.yml
     with:
       runner: macos-15-intel
@@ -49,6 +49,35 @@ jobs:
       - name: Gerar projeto nativo Android
         run: npx expo prebuild --platform android --clean
 
+      # O React Native pede uma versão específica do NDK. Se a máquina do GitHub não tiver,
+      # o Gradle tenta baixar sozinho e às vezes recebe um arquivo corrompido. Aqui o NDK é
+      # instalado antes (com cache e novas tentativas) para o build não depender disso.
+      - name: Descobrir versão do NDK
+        id: ndk
+        run: |
+          V=$(grep -oE 'ndkVersion\s*=\s*"[0-9.]+"' android/build.gradle | grep -oE '[0-9.]+' | head -n 1)
+          V=${V:-26.1.10909125}
+          echo "Versão do NDK: $V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Cache do NDK
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.ANDROID_HOME }}/ndk/${{ steps.ndk.outputs.version }}
+          key: ndk-${{ runner.os }}-${{ steps.ndk.outputs.version }}
+
+      - name: Instalar NDK
+        run: |
+          V=${{ steps.ndk.outputs.version }}
+          if [ -f "$ANDROID_HOME/ndk/$V/source.properties" ]; then echo "NDK $V já disponível"; exit 0; fi
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          for i in 1 2 3; do
+            rm -rf "$ANDROID_HOME/ndk/$V"
+            yes | "$SDKM" --install "ndk;$V" > /dev/null && [ -f "$ANDROID_HOME/ndk/$V/source.properties" ] && break
+            echo "Tentativa $i falhou, tentando de novo..."; sleep 20
+          done
+          test -f "$ANDROID_HOME/ndk/$V/source.properties"
+
       # O template do Expo assina o release com a chave de debug que vem no projeto,
       # o que gera um APK instalável direto no celular (fora da Play Store).
       - name: Compilar APK (Release)
@@ -69,7 +98,7 @@ jobs:
   release:
     name: Publicar Release
     needs: [build-ipa, build-ipa-retry, build-apk]
-    if: ${{ always() && (needs.build-apk.result == 'success' || needs.build-ipa.result == 'success' || needs.build-ipa-retry.result == 'success') }}
+    if: ${{ !cancelled() && (needs.build-apk.result == 'success' || needs.build-ipa.result == 'success' || needs.build-ipa-retry.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
