@@ -92,7 +92,18 @@ jobs:
           else
             echo "::warning::Segredos ANDROID_KEYSTORE_* não configurados: APK assinado com a chave de debug (o Play Protect pode travar a instalação)."
           fi
+          # abiFilters remove do APK as bibliotecas x86 que já vêm prontas (React Native, Hermes, Expo);
+          # reactNativeArchitectures só afeta o que é compilado do código-fonte.
+          cat > "$RUNNER_TEMP/abi-celular.gradle" <<'EOF'
+          allprojects { p ->
+            p.plugins.withId('com.android.application') {
+              p.android.defaultConfig.ndk.abiFilters.clear()
+              p.android.defaultConfig.ndk.abiFilters.addAll(['arm64-v8a', 'armeabi-v7a'])
+            }
+          }
+          EOF
           ./gradlew assembleRelease --no-daemon \
+            -I "$RUNNER_TEMP/abi-celular.gradle" \
             -PreactNativeArchitectures=arm64-v8a,armeabi-v7a \
             "${ASSINATURA[@]}" \
             -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
@@ -105,7 +116,9 @@ jobs:
           APK="$RUNNER_TEMP/controles-gastos-ml.apk"
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n 1)
           "$BT/apksigner" verify --print-certs "$APK" | grep -E "certificate DN|SHA-256"
-          echo "Arquiteturas: $(unzip -l "$APK" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | tr '\n' ' ')"
+          ABIS=$(unzip -l "$APK" | awk '{print $4}' | grep '^lib/' | cut -d/ -f2 | sort -u | tr '\n' ' ')
+          echo "Arquiteturas: $ABIS"
+          if echo "$ABIS" | grep -q x86; then echo "::error::O APK ainda contém bibliotecas x86 (só deveria ter arm64-v8a e armeabi-v7a)."; exit 1; fi
           "$BT/aapt" dump badging "$APK" | grep -E "^package|sdkVersion|targetSdkVersion"
 
       - uses: actions/upload-artifact@v4
