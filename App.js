@@ -9,6 +9,7 @@ import ResumoScreen from './src/screens/ResumoScreen';
 import FaltamScreen from './src/screens/FaltamScreen';
 import LancamentosScreen from './src/screens/LancamentosScreen';
 import AjustesScreen from './src/screens/AjustesScreen';
+import ContatosScreen from './src/screens/ContatosScreen';
 import { colors } from './src/utils';
 
 const Tab = createBottomTabNavigator();
@@ -17,6 +18,7 @@ const icons = {
   Faltam: 'time',
   Lançamentos: 'list',
   Ajustes: 'settings',
+  Contatos: 'people',
 };
 
 export default function App() {
@@ -42,6 +44,7 @@ export default function App() {
             <Tab.Screen name="Faltam" component={FaltamScreen} options={{ title: 'A pagar' }} />
             <Tab.Screen name="Lançamentos" component={LancamentosScreen} />
             <Tab.Screen name="Ajustes" component={AjustesScreen} />
+            <Tab.Screen name="Contatos" component={ContatosScreen} />
           </Tab.Navigator>
         </NavigationContainer>
       </StoreProvider>
