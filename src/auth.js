@@ -28,7 +28,11 @@ export function AuthProvider({ children }) {
       },
       // Retorna true se a conta já entrou direto; false se precisa confirmar o e-mail
       criarConta: async (email, senha) => {
-        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password: senha });
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: senha,
+          options: { data: { app: 'Controles de gastos ML' } }, // aparece em usuarios.app_cadastro
+        });
         if (error) throw error;
         return Boolean(data.session);
       },

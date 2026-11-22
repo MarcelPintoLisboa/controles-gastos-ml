@@ -33,6 +33,8 @@ export function mensagemErro(e) {
     return 'Sem conexão com a internet. Verifique a rede e tente de novo.';
   }
   if (/Invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.';
+  if (/banned/i.test(msg)) return 'Sua conta foi desativada. Fale com a ML Softwares: (81) 98805-5220.';
+  if (/row-level security/i.test(msg)) return 'Sua conta está desativada ou sem permissão para esta ação. Fale com a ML Softwares.';
   if (/Email not confirmed/i.test(msg)) return 'Confirme seu e-mail pelo link que enviamos antes de entrar.';
   if (/User already registered/i.test(msg)) return 'Já existe uma conta com este e-mail. Use "Entrar".';
   if (/Password should be at least/i.test(msg)) return 'A senha precisa ter pelo menos 6 caracteres.';
