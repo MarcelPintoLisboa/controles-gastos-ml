@@ -2,12 +2,19 @@ import React, { useState } from 'react';
 import { ScrollView, Text, Alert, Share, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useStore } from '../store';
+import { useAuth } from '../auth';
 import { Card, Title, Button, YearPicker, Chip, ChipRow } from '../components/ui';
 import { colors, MESES } from '../utils';
 import { escolherPlanilha, lerAba } from '../importPlanilha';
 
 export default function AjustesScreen() {
   const { items, doAno, ano, setAno, anos, copiarAno, zerarAno, importar, brl } = useStore();
+  const { user, sair } = useAuth();
+  const confirmarSair = () =>
+    Alert.alert('Sair da conta', 'Seus dados continuam salvos na nuvem. Para ver de novo, é só entrar.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Sair', style: 'destructive', onPress: sair },
+    ]);
   const [novoAno, setNovoAno] = useState(ano + 1);
 
   // importação: arquivo escolhido, aba selecionada e prévia da leitura
@@ -58,10 +65,10 @@ export default function AjustesScreen() {
       {
         text: 'Importar',
         style: modo === 'substituir' ? 'destructive' : 'default',
-        onPress: () => {
-          importar(ano, previa.itens, modo);
+        onPress: async () => {
+          const qtd = previa.itens.length;
           limparImport();
-          Alert.alert('Pronto', `${previa.itens.length} lançamentos importados em ${ano}.`);
+          if (await importar(ano, previa.itens, modo)) Alert.alert('Pronto', `${qtd} lançamentos importados em ${ano}.`);
         },
       },
     ]);
@@ -177,8 +184,18 @@ export default function AjustesScreen() {
             <Button label={`Zerar dados de ${ano}`} color={colors.danger} outline onPress={zerar} />
           </View>
           <Text style={{ color: colors.muted, marginTop: 10, fontSize: 12 }}>
-            Total salvo no aparelho: {items.length} lançamentos ({brl(items.reduce((a, i) => a + i.valor, 0))}).
+            Total salvo na sua conta: {items.length} lançamentos ({brl(items.reduce((a, i) => a + i.valor, 0))}).
           </Text>
+        </Card>
+
+        <Card>
+          <Title>Conta</Title>
+          <Text style={{ color: colors.muted, marginBottom: 4 }}>Conectado como</Text>
+          <Text style={{ color: colors.text, fontWeight: '700', marginBottom: 12 }}>{user?.email}</Text>
+          <Text style={{ color: colors.muted, fontSize: 12, marginBottom: 12 }}>
+            Seus lançamentos ficam salvos na nuvem. Entre com a mesma conta em outro aparelho para ver os mesmos dados.
+          </Text>
+          <Button label="Sair da conta" outline color={colors.danger} onPress={confirmarSair} />
         </Card>
       </ScrollView>
     </SafeAreaView>
